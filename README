@@ -1,0 +1,60 @@
+﻿
+-= satradio - Analogue satellite radio transmitter =-
+
+
+WHAT'S IT DO
+
+Transmits one or more FM and ADR (Astra Digital Radio) audio subcarriers
+as used on analogue satellite TV.
+
+* Supported audio input:
+- 16-bit raw audio (mono or stereo)
+- Test tone
+- Optionally any audio source supported by ffmpeg
+
+* Supported subcarrier modes:
+- FM mono or dual-carrier stereo (with no, 50us, 75us, j17 pre-emphasis)
+- ADR (Astra Digital Radio, aka Digital Panda)
+
+* Supported output:
+- hackrf
+- SoapySDR
+- file
+
+Configuration is done by ini-style file. Please see example.conf for details.
+
+
+REQUIREMENTS
+
+Depends on libhackrf, twolame (>= 0.4.0), and optionally soapysdr and ffmpeg
+libraries.
+
+* For Fedora (with rpmfusion)
+yum install hackrf-devel SoapySDR-devel ffmpeg-devel
+
+
+WARNING
+
+The hackrf and other SDRs are not designed to be connected directly to AV
+equipment and could be damaged by, or cause damage to, your receiver. Please
+ensure no DC voltages or control signals are sent back into the hackrf, and
+that the RF power levels out of the hackrf are not too high for your receiver.
+
+
+INSTALL
+
+cd src
+make
+make install
+
+
+TODO
+
+- Panda FM pre-emphasis
+- Multithreading support
+
+
+THANKS
+
+Phil Pemberton
+
