@@ -251,7 +251,14 @@ static int _adr_subcarrier(struct satradio_t *s, struct satradio_channel_t *c, i
 				l -= r;
 			}
 			
-			adr_feed(&c->adr, audio, 2, audio + 1, 2, ADR_SAMPLES_PER_FRAME);
+			if(c->stereo)
+			{
+				adr_feed(&c->adr, audio, 2, audio + 1, 2, ADR_SAMPLES_PER_FRAME);
+			}
+			else
+			{
+				adr_feed(&c->adr, audio, 1, NULL, 0, ADR_SAMPLES_PER_FRAME);
+			}
 			
 			while(adr_next_frame(&c->adr, frame) == 0)
 			{
@@ -625,7 +632,7 @@ int main(int argc, char *argv[])
 			);
 			
 			ch->sample_rate = ADR_SAMPLE_RATE;
-			ch->stereo = 1;
+			ch->stereo = (mode == TWOLAME_MONO ? 0 : 1);
 			
 			/* Allocate memory for modulator output buffer */
 			r = ch->sample_rate / TWOLAME_SAMPLES_PER_FRAME;
