@@ -17,7 +17,7 @@ endif
 HACKRF := $(shell $(PKGCONF) --exists libhackrf && echo hackrf)
 ifeq ($(HACKRF),hackrf)
 	OBJS += rf_hackrf.o
-	ifeq ($(CC),x86_64-w64-mingw32-gcc)
+	ifneq (,$(findstring mingw32-gcc,$(CC)))
 		PKGS += libhackrf libusb-1.0
 	else
 		PKGS += libhackrf

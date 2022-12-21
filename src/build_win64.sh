@@ -113,7 +113,6 @@ fi
 
 cd ..
 CROSS_HOST=$HOST- make -j4 EXTRA_LDFLAGS="-static"
-mv -f satradio satradio.exe || true
 $HOST-strip satradio.exe
 
 echo "Done"
