@@ -112,7 +112,7 @@ if [[ ! -f $PREFIX/lib/libavformat.a ]]; then
 fi
 
 cd ..
-CROSS_HOST=$HOST- make -j4 EXTRA_LDFLAGS="-static"
+CROSS_HOST=$HOST- make -j4 EXTRA_LDFLAGS="-static" EXTRA_CFLAGS="-DLIBTWOLAME_STATIC" EXTRA_PKGS="libusb-1.0"
 $HOST-strip satradio.exe
 
 echo "Done"

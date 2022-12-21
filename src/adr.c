@@ -18,9 +18,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#ifdef WIN32
-#define LIBTWOLAME_STATIC
-#endif
 #include <twolame.h>
 #include "adr.h"
 
