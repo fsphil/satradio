@@ -1,11 +1,11 @@
 
 # -fsanitize=address
-CC      := gcc
-PKGCONF := pkg-config
+CC      := $(CROSS_HOST)gcc
+PKGCONF := $(CROSS_HOST)pkg-config
 CFLAGS  := -g -Wall -O3 -pthread -pedantic
-LDFLAGS := -g -lm -pthread
+LDFLAGS := -g -lm -pthread $(EXTRA_LDFLAGS)
 OBJS    := satradio.o conf.o rf.o rf_file.o src.o src_tone.o src_rawaudio.o filter.o adr.o
-PKGS    := twolame
+PKGS    := twolame $(EXTRA_PKGS)
 
 FFMPEG := $(shell $(PKGCONF) --exists libavcodec && echo ffmpeg)
 ifeq ($(FFMPEG),ffmpeg)
@@ -17,7 +17,11 @@ endif
 HACKRF := $(shell $(PKGCONF) --exists libhackrf && echo hackrf)
 ifeq ($(HACKRF),hackrf)
 	OBJS += rf_hackrf.o
-	PKGS += libhackrf
+	ifneq (,$(findstring mingw32-gcc,$(CC)))
+		PKGS += libhackrf libusb-1.0
+	else
+		PKGS += libhackrf
+	endif
 	CFLAGS += -DHAVE_LIBHACKRF
 endif
 
@@ -41,7 +45,7 @@ satradio: $(OBJS)
 	@$(CC) $(CFLAGS) -MM $< -o $(@:.o=.d)
 
 clean:
-	rm -f *.o *.d satradio
+	rm -f *.o *.d satradio satradio.exe
 
 -include $(OBJS:.o=.d)
 
