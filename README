@@ -61,7 +61,13 @@ Phil Pemberton
 
 CHANGELOG
 
-2022-12-15, v0.1 - Initial release.
+2022-12-23, v0.2
+- Fix repeat for ffmpeg sources
+- Windows build script (Stephen McGarry)
+- Fix ADR mono mode only playing left channel for stereo sources
+
+2022-12-15, v0.1
+- Initial release
 
 
 --
