@@ -512,7 +512,7 @@ int main(int argc, char *argv[])
 		switch(c)
 		{
 		case 'v': /* -v, --version */
-			fprintf(stderr, "satradio v0.1\n");
+			fprintf(stderr, "satradio v0.2\n");
 			return(0);
 		
 		case 'c': /* -c, --config <filename> */
