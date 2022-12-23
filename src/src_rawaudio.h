@@ -18,7 +18,7 @@
 #ifndef _SRC_RAWAUDIO_H
 #define _SRC_RAWAUDIO_H
 
-extern int src_rawaudio_open(struct src_t *s, const char *filename, int exec, int stereo, int repeat);
+extern int src_rawaudio_open(struct src_t *s, const char *filename, int exec, int stereo);
 
 #endif
 

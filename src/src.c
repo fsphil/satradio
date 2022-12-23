@@ -22,7 +22,7 @@ int src_read_mono(struct src_t *s, int16_t *dst, int step, int samples)
 {
 	int i;
 	
-	if(!s || s->audio_len < 0)
+	if(!s || src_eof(s) || s->audio_len < 0)
 	{
 		/* EOF */
 		return(0);
@@ -63,7 +63,7 @@ int src_read_stereo(struct src_t *s, int16_t *dst_l, int step_l, int16_t *dst_r,
 {
 	int i;
 	
-	if(!s || s->audio_len < 0)
+	if(!s || src_eof(s) || s->audio_len < 0)
 	{
 		/* EOF */
 		return(0);
@@ -105,13 +105,33 @@ int src_read_stereo(struct src_t *s, int16_t *dst_l, int step_l, int16_t *dst_r,
 
 int src_eof(struct src_t *s)
 {
-	if(!s) return(-1); /* EOF */
+	if(!s) return(-1);
+	if(!s->read) return(-1);
 	return(s->eof);
 }
 
 int src_close(struct src_t *s)
 {
-	if(!s || !s->close) return(0);
-	return(s->close(s->private));
+	int r;
+	
+	if(!s)
+	{
+		return(0);
+	}
+	
+	if(s->close)
+	{
+		r = s->close(s->private);
+	}
+	else
+	{
+		r = 0;
+	}
+	
+	s->read = NULL;
+	s->close = NULL;
+	s->private = NULL;
+	
+	return(r);
 }
 

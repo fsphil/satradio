@@ -29,7 +29,6 @@ typedef struct {
 	FILE *f;
 	int exec;
 	int channels;
-	int repeat;
 	
 } src_rawaudio_t;
 
@@ -39,9 +38,8 @@ static int _src_rawaudio_read(src_rawaudio_t *src, int16_t *audio[2], int audio_
 	
 	if(feof(src->f))
 	{
-		/* EOF -- rewind to beginning or signal EOF */
-		if(src->repeat) fseek(src->f, 0, SEEK_SET);
-		else return(-1);
+		/* EOF */
+		return(-1);
 	}
 	
 	i = fread(src->audio, sizeof(int16_t) * src->channels, src->audio_len, src->f);
@@ -72,7 +70,7 @@ static int _src_rawaudio_close(src_rawaudio_t *src)
 	return(0);
 }
 
-int src_rawaudio_open(struct src_t *s, const char *filename, int exec, int stereo, int repeat)
+int src_rawaudio_open(struct src_t *s, const char *filename, int exec, int stereo)
 {
 	src_rawaudio_t *src;
 	
@@ -93,7 +91,6 @@ int src_rawaudio_open(struct src_t *s, const char *filename, int exec, int stere
 		return(-1);
 	}
 	src->channels = stereo ? 2 : 1;
-	src->repeat = repeat;
 	
 	/* Allocate memory for output buffer (0.1 seconds at 32000 Hz) */
 	src->audio_len = 3200;

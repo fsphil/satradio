@@ -18,6 +18,8 @@ enum satradio_channel_mode_t {
 
 struct satradio_channel_t {
 	
+	int index;
+	
 	int active;
 	enum satradio_channel_mode_t mode;
 	
@@ -25,6 +27,7 @@ struct satradio_channel_t {
 	struct src_t src;
 	unsigned int sample_rate;
 	int stereo;
+	int repeat;
 	
 	/* FM filters and modulator */
 	struct limiter_t limiter[2];
@@ -74,6 +77,116 @@ static void _sigint_callback_handler(int signum)
 	_abort = 1;
 }
 
+static int _channel_src_open(struct satradio_t *s, int channel)
+{
+	struct satradio_channel_t *ch;
+	const char *v;
+	int r;
+	
+	ch = &s->channels[channel];
+	
+	/* Open the audio source */
+	v = conf_str(s->conf, "channel", channel, "type", "rawaudio");
+	if(strcmp(v, "rawaudio") == 0)
+	{
+		v = conf_str(s->conf, "channel", channel, "input", NULL);
+		if(!v)
+		{
+			fprintf(stderr, "Error: Missing input in channel %d.\n", channel + 1);
+			return(-1);
+		}
+		
+		r = src_rawaudio_open(
+			&ch->src,
+			v,
+			conf_bool(s->conf, "channel", channel, "exec", 0),
+			conf_bool(s->conf, "channel", channel, "stereo", 1)
+		);
+		
+		if(r != 0)
+		{
+			fprintf(stderr, "Error: Failed to open '%s' for channel %d.\n", v, channel + 1);
+			return(-1);
+		}
+	}
+	else if(strcasecmp(v, "tone") == 0)
+	{
+		r = src_tone_open(
+			&ch->src,
+			ch->sample_rate,
+			conf_double(s->conf, "channel", channel, "tone_hz", 0),
+			conf_double(s->conf, "channel", channel, "tone_level", 0)
+		);
+		
+		if(r != 0)
+		{
+			fprintf(stderr, "Error: Failed to open tone source for channel %d.\n", channel + 1);
+			return(-1);
+		}
+	}
+#ifdef HAVE_FFMPEG
+	else if(strcasecmp(v, "ffmpeg") == 0)
+	{
+		v = conf_str(s->conf, "channel", channel, "input", NULL);
+		if(!v)
+		{
+			fprintf(stderr, "Error: Missing input filename/URL for channel %d.\n", channel + 1);
+			return(-1);
+		}
+		
+		r = src_ffmpeg_open(&ch->src, v, ch->sample_rate);
+		if(r != 0)
+		{
+			fprintf(stderr, "Error: Failed to open '%s' for channel %d.\n", v, channel + 1);
+			return(-1);
+		}
+	}
+#endif
+	else
+	{
+		fprintf(stderr, "Error: Unrecognised input type '%s' for channel %d.\n", v, channel + 1);
+		return(-1);
+	}
+	
+	return(0);
+}
+
+static int _channel_src_read_mono(struct satradio_t *s, struct satradio_channel_t *ch, int16_t *dst, int step, int samples)
+{
+	int r;
+	
+	if(ch->repeat && src_eof(&ch->src))
+	{
+		src_close(&ch->src);
+		
+		r = _channel_src_open(s, ch->index);
+		if(r != 0)
+		{
+			return(0);
+		}
+	}
+	
+	return(src_read_mono(&ch->src, dst, step, samples));
+}
+
+static int _channel_src_read_stereo(struct satradio_t *s, struct satradio_channel_t *ch, int16_t *dst_l, int step_l, int16_t *dst_r, int step_r, int samples)
+{
+	int r;
+	
+	if(ch->repeat && src_eof(&ch->src))
+	{
+		src_close(&ch->src);
+		
+		r = _channel_src_open(s, ch->index);
+		if(r != 0)
+		{
+			return(0);
+		}
+	}
+	
+	return(src_read_stereo(&ch->src, dst_l, step_l, dst_r, step_r, samples));
+}
+
 static int _fm_mono_subcarrier(struct satradio_t *s, struct satradio_channel_t *c, int16_t *out, int bl)
 {
 	int16_t audio[ADR_SAMPLES_PER_FRAME];
@@ -90,13 +203,13 @@ static int _fm_mono_subcarrier(struct satradio_t *s, struct satradio_channel_t *
 			
 			while(l > 0)
 			{
-				if(src_eof(&c->src))
+				if(!c->repeat && src_eof(&c->src))
 				{
 					return(-1);
 				}
 				
-				r = src_read_mono(&c->src, paudio, 1, l);
-				if(r < 0)
+				r = _channel_src_read_mono(s, c, paudio, 1, l);
+				if(r == 0)
 				{
 					break;
 				}
@@ -155,15 +268,15 @@ static int _fm_dual_subcarrier(struct satradio_t *s, struct satradio_channel_t *
 			
 			while(l > 0)
 			{
-				if(src_eof(&c->src))
+				if(!c->repeat && src_eof(&c->src))
 				{
 					return(-1);
 				}
 				
-				r = src_read_stereo(&c->src, paudio, 2, paudio + 1, 2, l);
+				r = _channel_src_read_stereo(s, c, paudio, 2, paudio + 1, 2, l);
 				if(r < 0)
 				{
-					break;
+					return(-1);
 				}
 				
 				paudio += r * 2;
@@ -227,23 +340,23 @@ static int _adr_subcarrier(struct satradio_t *s, struct satradio_channel_t *c, i
 			
 			while(l > 0)
 			{
-				if(src_eof(&c->src))
+				if(!c->repeat && src_eof(&c->src))
 				{
 					return(-1);
 				}
 				
 				if(c->stereo)
 				{
-					r = src_read_stereo(&c->src, paudio, 2, paudio + 1, 2, l);
+					r = _channel_src_read_stereo(s, c, paudio, 2, paudio + 1, 2, l);
 					paudio += r * 2;
 				}
 				else
 				{
-					r = src_read_mono(&c->src, paudio, 1, l);
+					r = _channel_src_read_mono(s, c, paudio, 1, l);
 					paudio += r;
 				}
 				
-				if(r < 0)
+				if(r == 0)
 				{
 					break;
 				}
@@ -454,6 +567,7 @@ int main(int argc, char *argv[])
 		}
 		
 		ch = &s.channels[i];
+		ch->index = i;
 		
 		/* Configure the channel */
 		v = conf_str(s.conf, "channel", i, "mode", NULL);
@@ -651,66 +765,11 @@ int main(int argc, char *argv[])
 		}
 		
 		/* Open the audio source */
-		v = conf_str(s.conf, "channel", i, "type", "rawaudio");
-		if(strcmp(v, "rawaudio") == 0)
+		ch->repeat = conf_bool(s.conf, "channel", i, "repeat", 0);
+		
+		r = _channel_src_open(&s, i);
+		if(r != 0)
 		{
-			v = conf_str(s.conf, "channel", i, "input", NULL);
-			if(!v)
-			{
-				fprintf(stderr, "Error: Missing input in channel %d.\n", i + 1);
-				return(-1);
-			}
-			
-			r = src_rawaudio_open(
-				&ch->src,
-				v,
-				conf_bool(s.conf, "channel", i, "exec", 0),
-				conf_bool(s.conf, "channel", i, "stereo", 1),
-				conf_bool(s.conf, "channel", i, "repeat", 0)
-			);
-			
-			if(r != 0)
-			{
-				fprintf(stderr, "Error: Failed to open '%s' for channel %d.\n", v, i + 1);
-				return(-1);
-			}
-		}
-		else if(strcasecmp(v, "tone") == 0)
-		{
-			r = src_tone_open(
-				&ch->src,
-				ch->sample_rate,
-				conf_double(s.conf, "channel", i, "tone_hz", 0),
-				conf_double(s.conf, "channel", i, "tone_level", 0)
-			);
-			
-			if(r != 0)
-			{
-				fprintf(stderr, "Error: Failed to open tone source for channel %d.\n", i + 1);
-				return(-1);
-			}
-		}
-#ifdef HAVE_FFMPEG
-		else if(strcasecmp(v, "ffmpeg") == 0)
-		{
-			v = conf_str(s.conf, "channel", i, "input", NULL);
-			if(!v)
-			{
-				fprintf(stderr, "Error: Missing input filename/URL for channel %d.\n", i + 1);
-				return(-1);
-			}
-			
-			r = src_ffmpeg_open(&ch->src, v, ch->sample_rate);
-			if(r != 0)
-			{
-				fprintf(stderr, "Error: Failed to open '%s' for channel %d.\n", v, i + 1);
-				return(-1);
-			}
-		}
-#endif
-		else
-		{
-			fprintf(stderr, "Error: Unrecognised input type '%s' for channel %d.\n", v, i + 1);
 			return(-1);
 		}
 		
