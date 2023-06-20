@@ -116,7 +116,7 @@ extern int rf_mixer_process(struct rf_mixer_t *s, int16_t *out, const int16_t *i
 
 /* Utils */
 
-extern int rf_gcd(int a, int b);
+extern int64_t rf_gcd(int64_t a, int64_t b);
 
 #include "rf_file.h"
 
