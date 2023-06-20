@@ -119,7 +119,10 @@ extern int rf_mixer_process(struct rf_mixer_t *s, int16_t *out, const int16_t *i
 extern int rf_gcd(int a, int b);
 
 #include "rf_file.h"
+
+#ifdef HAVE_LIBHACKRF
 #include "rf_hackrf.h"
+#endif
 
 #ifdef HAVE_SOAPYSDR
 #include "rf_soapysdr.h"

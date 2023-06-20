@@ -784,22 +784,8 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "No output type specified.\n");
 		return(-1);
 	}
-	if(strcmp(v, "hackrf") == 0)
-	{
-		r = rf_hackrf_open(&s.rf,
-			conf_str(s.conf, "output", -1, "output", NULL),
-			s.sample_rate,
-			conf_double(s.conf, "output", -1, "frequency", 0),
-			conf_double(s.conf, "output", -1, "gain", 0),
-			conf_bool(s.conf, "output", -1, "amp", 0)
-		);
-		
-		if(r != 0)
-		{
-			return(-1);
-		}
-	}
-	else if(strcmp(v, "file") == 0)
+	
+	if(strcmp(v, "file") == 0)
 	{
 		i = -1;
 		v = conf_str(s.conf, "output", -1, "data_type", "int16");
@@ -827,6 +813,23 @@ int main(int argc, char *argv[])
 			return(-1);
 		}
 	}
+#ifdef HAVE_LIBHACKRF
+	else if(strcmp(v, "hackrf") == 0)
+	{
+		r = rf_hackrf_open(&s.rf,
+			conf_str(s.conf, "output", -1, "output", NULL),
+			s.sample_rate,
+			conf_double(s.conf, "output", -1, "frequency", 0),
+			conf_double(s.conf, "output", -1, "gain", 0),
+			conf_bool(s.conf, "output", -1, "amp", 0)
+		);
+		
+		if(r != 0)
+		{
+			return(-1);
+		}
+	}
+#endif
 #ifdef HAVE_SOAPYSDR
 	else if(strcmp(v, "soapysdr") == 0)
 	{
